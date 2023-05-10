@@ -75,8 +75,7 @@ def handler(args, options):
 
     try:
         levels = api.get_price_levels(args.chain, makers)
-        retrieved_makers = levels.keys()
-        if not retrieved_makers:
+        if not levels.keys():
             raise Exception("No maker levels.\n")
 
         def filter_fn(maker):
@@ -123,8 +122,8 @@ def handler(args, options):
             }
 
         maker_levels = {
-            maker: list(map(transform_levels, filter(filter_fn(maker), maker_levels)))
-            for maker, maker_levels in levels.items()
+            m: list(map(transform_levels, filter(filter_fn(m), l)))
+            for m, l in levels.items()
         }
         sys.stdout.write("done\n")
         print(maker_levels)
