@@ -53,7 +53,7 @@ def handler(args, options):
     sys.stdout.write("Finding active makers ... ")
 
     try:
-        chain_makers = api.get_market_makers(chain_id=args.chain, market_maker=[args.maker])
+        chain_makers = api.get_market_makers(chain_id=args.chain, market_maker=args.maker)
 
         def check_maker(maker):
             prefix = maker.split("_")[0]
@@ -69,7 +69,7 @@ def handler(args, options):
 
     makers_list_or_one = makers if len(makers) > 1 else makers[0]
     sys.stdout.write(f"done. {makers_list_or_one}\n")
-    sys.stdout.write(f"Fetching levels for {makers_list_or_one}\n")
+    sys.stdout.write(f"Fetching levels for {makers_list_or_one}...")
     maker_levels = {}
 
     try:
