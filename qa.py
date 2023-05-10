@@ -52,15 +52,71 @@ def handler(args, options):
 
     sys.stdout.write("Finding active makers ... ")
 
-    chain_makers = api.get_market_makers(args.chain, None, args.maker)
+    try:
+        chain_makers = api.get_market_makers(args.chain, None, args.maker)
 
-    def check_maker(maker):
-        prefix = maker.split("_")[0]
-        return prefix == args.maker
+        def check_maker(maker):
+            prefix = maker.split("_")[0]
+            return prefix == args.maker
 
-    makers = list(filter(check_maker, chain_makers))
+        makers = list(filter(check_maker, chain_makers))
+        if len(makers) == 0:
+            raise Exception(f"No makers available: {chain_makers}")
+        
+    except Exception as e:
+        sys.stdout.write(f"Failed! {e}\n")
+        exit(-1)
 
-    print(makers)
+    makers_list_or_one = makers if len(makers) > 1 else makers[0]
+    sys.stdout.write(f"done. {makers_list_or_one}\n")
+    sys.stdout.write(f"Fetching levels for {makers_list_or_one}\n")
+    maker_levels = {}
+
+    try:
+        levels = api.get_price_levels(args.chain, makers)
+        retrieved_makers = levels.keys()
+        if not retrieved_makers:
+            raise Exception('No maker levels.\n')
+
+        for retrieved_maker in retrieved_makers:
+            m_pairs = levels[retrieved_maker]
+            if not m_pairs:
+                raise Exception(f'No levels for {retrieved_maker}.\n')
+
+            if not maker_levels.get(retrieved_maker):
+                maker_levels[retrieved_maker] = []
+
+            for entry in m_pairs:
+                pair = entry['pair']
+                pair_base_token_name = pair['baseTokenName']
+                pair_quote_token_name = pair['quoteTokenName']
+                if pair_provided and not (pair_base_token_name == args.base_token and pair_quote_token_name == args.quote_token):
+                    continue
+
+                levels_data = entry['levels']
+                if not levels_data:
+                    sys.stdout.write(f" No levels for {retrieved_maker} on {pair_base_token_name}-{pair_quote_token_name}. Continuing with next pair...\n")
+                    continue
+
+                base_token = {
+                    'chainId': args.chain,
+                    'address': pair['baseToken'],
+                    'name': pair_base_token_name,
+                    'decimals': pair['baseTokenDecimals']
+                }
+                quote_token = {
+                    'chainId': args.chain,
+                    'address': pair['quoteToken'],
+                    'name': pair_quote_token_name,
+                    'decimals': pair['quoteTokenDecimals']
+                }
+                maker_levels[retrieved_maker].append({'baseToken': base_token, 'quoteToken': quote_token, 'levels': levels_data})
+    except Exception as e:
+        sys.stdout.write(f'failed! {e}\n')
+        sys.exit(0)
+
+    sys.stdout.write('done\n')
+
 
 
 if __name__ == "__main__":
