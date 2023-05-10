@@ -94,7 +94,7 @@ def handler(args, options):
                 levels_data = entry["levels"]
                 if not levels_data:
                     sys.stdout.write(
-                        f" No levels for {retrieved_maker} on {pair_base_token_name}-{pair_quote_token_name}. Continuing with next pair...\n"
+                        f" No levels for {maker} on {pair_base_token_name}-{pair_quote_token_name}. Continuing with next pair...\n"
                     )
                     return False
                 return True
