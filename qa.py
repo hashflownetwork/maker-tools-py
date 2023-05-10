@@ -72,7 +72,6 @@ def handler(args, options):
     makers_list_or_one = makers if len(makers) > 1 else makers[0]
     sys.stdout.write(f"done. {makers_list_or_one}\n")
     sys.stdout.write(f"Fetching levels for {makers_list_or_one}...")
-    maker_levels = {}
 
     try:
         levels = api.get_price_levels(args.chain, makers)
@@ -123,12 +122,12 @@ def handler(args, options):
                 "levels": entry["levels"],
             }
 
-        levels_data = {
+        maker_levels = {
             maker: list(map(transform_levels, filter(filter_fn(maker), maker_levels)))
             for maker, maker_levels in levels.items()
         }
         sys.stdout.write("done\n")
-        print(levels_data)
+        print(maker_levels)
 
     except Exception as e:
         sys.stdout.write(f"failed! {e}\n")
