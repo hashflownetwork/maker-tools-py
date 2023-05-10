@@ -53,7 +53,7 @@ def handler(args, options):
     sys.stdout.write("Finding active makers ... ")
 
     try:
-        chain_makers = api.get_market_makers(args.chain, None, args.maker)
+        chain_makers = api.get_market_makers(chain_id=args.chain, market_maker=[args.maker])
 
         def check_maker(maker):
             prefix = maker.split("_")[0]
@@ -116,7 +116,6 @@ def handler(args, options):
         sys.exit(0)
 
     sys.stdout.write('done\n')
-
 
 
 if __name__ == "__main__":
