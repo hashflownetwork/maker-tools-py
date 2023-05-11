@@ -52,15 +52,86 @@ def handler(args, options):
 
     sys.stdout.write("Finding active makers ... ")
 
-    chain_makers = api.get_market_makers(args.chain, None, args.maker)
+    try:
+        chain_makers = api.get_market_makers(
+            chain_id=args.chain, market_maker=args.maker
+        )
 
-    def check_maker(maker):
-        prefix = maker.split("_")[0]
-        return prefix == args.maker
+        def check_maker(maker):
+            prefix = maker.split("_")[0]
+            return prefix == args.maker
 
-    makers = list(filter(check_maker, chain_makers))
+        makers = list(filter(check_maker, chain_makers))
+        if len(makers) == 0:
+            raise Exception(f"No makers available: {chain_makers}")
 
-    print(makers)
+    except Exception as e:
+        sys.stdout.write(f"Failed! {e}\n")
+        exit(-1)
+
+    makers_list_or_one = makers if len(makers) > 1 else makers[0]
+    sys.stdout.write(f"done. {makers_list_or_one}\n")
+    sys.stdout.write(f"Fetching levels for {makers_list_or_one}...")
+
+    try:
+        levels = api.get_price_levels(args.chain, makers)
+        if not levels.keys():
+            raise Exception("No maker levels.\n")
+
+        def filter_fn(maker):
+            def filter_levels(entry):
+                pair = entry["pair"]
+                if pair_provided:
+                    pair_base_token_name = pair["baseTokenName"]
+                    pair_quote_token_name = pair["quoteTokenName"]
+                    if pair_provided and not (
+                        pair_base_token_name == args.base_token
+                        and pair_quote_token_name == args.quote_token
+                    ):
+                        return False
+                levels_data = entry["levels"]
+                if not levels_data:
+                    sys.stdout.write(
+                        f" No levels for {maker} on {pair_base_token_name}-{pair_quote_token_name}. Continuing with next pair...\n"
+                    )
+                    return False
+                return True
+
+            return filter_levels
+
+        def transform_levels(entry):
+            pair = entry["pair"]
+            pair_base_token_name = pair["baseTokenName"]
+            pair_quote_token_name = pair["quoteTokenName"]
+            base_token = {
+                "chainId": args.chain,
+                "address": pair["baseToken"],
+                "name": pair_base_token_name,
+                "decimals": pair["baseTokenDecimals"],
+            }
+            quote_token = {
+                "chainId": args.chain,
+                "address": pair["quoteToken"],
+                "name": pair_quote_token_name,
+                "decimals": pair["quoteTokenDecimals"],
+            }
+            return {
+                "baseToken": base_token,
+                "quoteToken": quote_token,
+                "levels": entry["levels"],
+            }
+
+        maker_levels = {
+            m: list(map(transform_levels, filter(filter_fn(m), l)))
+            for m, l in levels.items()
+        }
+        sys.stdout.write("done\n")
+        print(maker_levels)
+
+    except Exception as e:
+        sys.stdout.write(f"failed! {e}\n")
+        raise e
+        sys.exit(0)
 
 
 if __name__ == "__main__":
