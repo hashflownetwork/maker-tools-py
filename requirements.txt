@@ -7,7 +7,7 @@ certifi==2023.5.7
 charset-normalizer==3.1.0
 click==8.1.3
 frozenlist==1.3.3
--e git+ssh://git@github.com/hashflownetwork/taker-py@78009608d83df46fd6e6c0ea5c7bfb2e75dc9185#egg=hashflow
+git+ssh://git@github.com/hashflownetwork/taker-py@78009608d83df46fd6e6c0ea5c7bfb2e75dc9185#egg=hashflow
 idna==3.4
 multidict==6.0.4
 mypy-extensions==1.0.0
