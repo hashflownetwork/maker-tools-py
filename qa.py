@@ -169,12 +169,13 @@ async def handler(args, options):
                         max_base_amount_dp = max([get_dp(round_precision(r["baseAmount"], 7)) if r.get("baseAmount") else 0 for r in result["results"]])
                         max_quote_amount_dp = max([get_dp(round_precision(r["quoteAmount"], 7)) if r.get("quoteAmount") else 0 for r in result["results"]])
                         
-                        max_base_digits = max([len(f'{r["baseAmount"]:.7f}') if r.get("baseAmount") else 0 for r in result["results"]])
-                        max_quote_digits = max([len(f'{r["quoteAmount"]:.7f}')  if r.get("quoteAmount") else 0 for r in result["results"]])
+                        max_base_digits = max([len(f'{r["baseAmount"]:,.{max_base_amount_dp}f}') if r.get("baseAmount") else 0 for r in result["results"]])
+                        max_quote_digits = max([len(f'{r["quoteAmount"]:,.{max_quote_amount_dp}f}')  if r.get("quoteAmount") else 0 for r in result["results"]])
 
                         max_fees_digits = max([len(f'{r["feeBps"]}') if r.get("feeBps") else 0 for r in result["results"]])
                         pad_dev_digits = max([len(str(round_precision(r["deviationBps"], 3))) + (1 if r["deviationBps"] > 0 else 0) if r.get("deviationBps") else 0 for r in result["results"]])
                         max_expected_digits = max(max_base_digits, max_quote_digits)
+                        print(max_expected_digits, max_base_digits, max_quote_digits)
                         max_rfq_id_length = max([len(json.dumps(r["rfqIds"])) if r.get("rfqIds") else 0 for r in result["results"]])
 
                         for r in result["results"]:
@@ -189,11 +190,12 @@ async def handler(args, options):
                                 token_exp = entry["baseToken"]["name"]
                                 max_expected_dp = max_base_amount_dp
 
-                            base_amount_str = f'[{base_letter}] base: ' + f'{r["baseAmount"]:.{max_base_amount_dp}f}'.rjust(max_base_digits, ' ') + ' ' + entry["baseToken"]["name"]
-                            quote_amount_str = f'[{quote_letter}] quote: ' + f'{r["quoteAmount"]:.{max_quote_amount_dp}f}'.rjust(max_quote_digits, ' ') + ' ' + entry["quoteToken"]["name"]
-                            expected_amount_str = f'expected ' + f'{r["expectedAmount"]:.{max_expected_dp}}'.rjust(max_expected_digits, ' ') + ' ' + token_exp.ljust(max(len(entry["baseToken"]["name"]), len(entry["quoteToken"]["name"])), ' ')
+                            base_amount_str = f'[{base_letter}] base: ' + f'{r["baseAmount"]:,.{max_base_amount_dp}f}'.rjust(max_base_digits, ' ') + ' ' + entry["baseToken"]["name"]
+                            quote_amount_str = f'[{quote_letter}] quote: ' + f'{r["quoteAmount"]:,.{max_quote_amount_dp}f}'.rjust(max_quote_digits, ' ') + ' ' + entry["quoteToken"]["name"]
+                            expected_amount_str = f'expected: ' + f'{r["expectedAmount"]:,.{max_expected_dp}f}'.rjust(max_expected_digits, ' ') + ' ' + token_exp.ljust(max(len(entry["baseToken"]["name"]), len(entry["quoteToken"]["name"])), ' ')
                             dev_sign = '+' if r.get("deviationBps", 0) > 0 else ''
-                            deviation = (dev_sign + str(round_precision(r['deviationBps'], 3))).rjust(pad_dev_digits, ' ') if r.get("deviationBps") else ''
+                            rounded_deviation = round_precision(r['deviationBps'], 3) if r.get("deviationBps") else 0
+                            deviation = (f'{dev_sign}{rounded_deviation:.3f}').rjust(pad_dev_digits, ' ') if r.get("deviationBps") is not None else ''
                             deviation_str = f'diff: {deviation} bps'
                             fees = str(r["feeBps"]).rjust(max_fees_digits, ' ')
                             fees_str = f'fees: {fees}'
