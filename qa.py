@@ -226,7 +226,6 @@ async def handler(args, options):
                             ]
                         )
                         max_expected_digits = max(max_base_digits, max_quote_digits)
-                        print(max_expected_digits, max_base_digits, max_quote_digits)
                         max_rfq_id_length = max(
                             [
                                 len(json.dumps(r["rfqIds"])) if r.get("rfqIds") else 0
