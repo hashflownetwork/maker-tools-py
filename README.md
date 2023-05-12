@@ -14,6 +14,17 @@ Run
 ./qa.py --chain 1 --maker mm5
 ```
 
-For more details on the QA scripts, please see the documentation in the typescript [maker-tools](https://github.com/hashflownetwork/maker-tools) repo.
+For more details on the QA scripts, please see the documentation in the typescript [maker-tools](https://github.com/hashflownetwork/maker-tools) repo. Note that
+the typescript tool takes arguments in the form: 
+
+```
+--chain=1
+```
+
+while this python script uses a different convention:
+
+```
+--chain 1
+```
 
 
