@@ -254,25 +254,16 @@ async def handler(args, options):
                             )
                             quote_amount_str = (
                                 f"[{quote_letter}] quote: "
-                                + f'{r["quoteAmount"]:,.{max_quote_amount_dp}f}'.rjust(
-                                    max_quote_digits, " "
-                                )
+                                + f'{r["quoteAmount"]:{max_quote_digits},.{max_quote_amount_dp}f}'
                                 + " "
                                 + entry["quoteToken"]["name"]
                             )
+                            token_max_length =  max(len(entry["baseToken"]["name"]),len(entry["quoteToken"]["name"]))
                             expected_amount_str = (
                                 f"expected: "
-                                + f'{r["expectedAmount"]:,.{max_expected_dp}f}'.rjust(
-                                    max_expected_digits, " "
-                                )
+                                + f'{r["expectedAmount"]:{max_expected_digits},.{max_expected_dp}f}'
                                 + " "
-                                + token_exp.ljust(
-                                    max(
-                                        len(entry["baseToken"]["name"]),
-                                        len(entry["quoteToken"]["name"]),
-                                    ),
-                                    " ",
-                                )
+                                + f'{token_exp:<{token_max_length}}'
                             )
                             dev_sign = "+" if r.get("deviationBps", 0) > 0 else ""
                             rounded_deviation = (
@@ -280,22 +271,22 @@ async def handler(args, options):
                                 if r.get("deviationBps")
                                 else 0
                             )
+                            dev_str =f'{dev_sign}{rounded_deviation:.3f}'
                             deviation = (
-                                (f"{dev_sign}{rounded_deviation:.3f}").rjust(
-                                    pad_dev_digits, " "
-                                )
+                                f"{dev_str:>{pad_dev_digits}}"
                                 if r.get("deviationBps") is not None
                                 else ""
                             )
                             deviation_str = f"diff: {deviation} bps"
-                            fees = str(r["feeBps"]).rjust(max_fees_digits, " ")
-                            fees_str = f"fees: {fees}"
+                            fees = r["feeBps"]
+                            fees_str = f"fees: {fees:{max_fees_digits}}"
                             fail_str = (
                                 f'failed! {r["failMsg"]}' if r.get("failMsg") else ""
                             )
-                            rfq_id_str = (
+                            rfq_ids = (
                                 json.dumps(r["rfqIds"]) if r.get("rfqIds") else "[--]"
-                            ).ljust(max_rfq_id_length, " ")
+                            )
+                            rfq_id_str = f'{rfq_ids:{max_rfq_id_length}}'
 
                             sys.stdout.write(
                                 f"[{index:2d}] {rfq_id_str} {base_amount_str} {quote_amount_str} {expected_amount_str} {deviation_str} {fees_str} {fail_str}\n"
