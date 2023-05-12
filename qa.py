@@ -326,6 +326,8 @@ async def test_rfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry)
                 "quoteAmount": None,
                 "failMsg": fail_msg,
             }
+            sys.stdout.write("done\n")
+            print(maker_levels)
 
         quote_amount = levels_quote["amount"]
         base_token_amount, quote_token_amount = (
