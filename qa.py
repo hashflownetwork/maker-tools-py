@@ -140,7 +140,7 @@ async def handler(args, options):
                     sys.stdout.write(f"Requesting RFQs for {maker}: {pair_str} ... ")
 
                     try:
-                        result = await testRfqs(
+                        result = await test_rfqs(
                             api,
                             options["qa_taker_address"],
                             args.num_requests,
@@ -165,7 +165,7 @@ async def handler(args, options):
             sys.exit(-1)
 
 
-async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
+async def test_rfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
     # Compute min and max levels
     pre_levels = entry["levels"]
 
@@ -290,7 +290,6 @@ async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
             }
 
         except Exception as e:
-            raise e
             return {"provided": provided, "failMsg": f"Error occurred: {e}"}
 
     result_futures = []
@@ -317,7 +316,7 @@ async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
         "successRate": num_success / num_requests,
         "biasBps": bias_bps,
         "deviationBps": deviation_bps,
-        "results": results,
+        # "results": results,
     }
 
 
@@ -329,31 +328,30 @@ def compute_levels_quote(price_levels, req_base_amount=None, req_quote_amount=No
     if not levels:
         return {"failure": "insufficient_liquidity"}
 
-    quote = {
-        "baseAmount": levels[0]["level"],
-        "quoteAmount": levels[0]["level"] * levels[0]["price"],
-    }
+    base_amount = levels[0]["level"]
+    quote_amount = levels[0]["level"] * levels[0]["price"]
+
     if (
         req_base_amount
-        and req_base_amount < quote["baseAmount"]
-        or (req_quote_amount and req_quote_amount < quote["quoteAmount"])
+        and req_base_amount < base_amount
+        or (req_quote_amount and req_quote_amount < quote_amount)
     ):
         return {"failure": "below_minimum_amount"}
 
     for i in range(1, len(levels)):
         next_level = levels[i]
         next_level_depth = next_level["level"] - levels[i - 1]["level"]
-        next_level_quote = quote["quoteAmount"] + next_level_depth * next_level["price"]
+        next_level_quote = quote_amount + next_level_depth * next_level["price"]
         if req_base_amount and req_base_amount <= next_level["level"]:
-            base_difference = req_base_amount - quote["baseAmount"]
-            quote_amount = quote["quoteAmount"] + base_difference * next_level["price"]
+            base_difference = req_base_amount - base_amount
+            quote_amount = quote_amount + base_difference * next_level["price"]
             return {"amount": quote_amount}
         elif req_quote_amount and req_quote_amount <= next_level_quote:
-            quote_difference = req_quote_amount - quote["quoteAmount"]
-            base_amount = quote["baseAmount"] + quote_difference / next_level["price"]
+            quote_difference = req_quote_amount - quote_amount
+            base_amount = base_amount + quote_difference / next_level["price"]
             return {"amount": base_amount}
-        quote["baseAmount"] = next_level["level"]
-        quote["quoteAmount"] = next_level_quote
+        base_amount = next_level["level"]
+        quote_amount = next_level_quote
 
     return {"failure": "insufficient_liquidity"}
 
