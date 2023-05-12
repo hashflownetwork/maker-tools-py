@@ -248,9 +248,7 @@ async def handler(args, options):
 
                             base_amount_str = (
                                 f"[{base_letter}] base: "
-                                + f'{r["baseAmount"]:,.{max_base_amount_dp}f}'.rjust(
-                                    max_base_digits, " "
-                                )
+                                + f'{r["baseAmount"]:{max_base_digits},.{max_base_amount_dp}f}'
                                 + " "
                                 + entry["baseToken"]["name"]
                             )
