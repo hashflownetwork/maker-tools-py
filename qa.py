@@ -234,7 +234,7 @@ async def handler(args, options):
                             ]
                         )
 
-                        for r in result["results"]:
+                        for index, r in enumerate(result["results"]):
                             if r.get("provided") == "base":
                                 base_letter = "P"
                                 quote_letter = "M"
@@ -300,7 +300,7 @@ async def handler(args, options):
                             ).ljust(max_rfq_id_length, " ")
 
                             sys.stdout.write(
-                                f"[1] {rfq_id_str} {base_amount_str} {quote_amount_str} {expected_amount_str} {deviation_str} {fees_str} {fail_str}\n"
+                                f"[{index:2d}] {rfq_id_str} {base_amount_str} {quote_amount_str} {expected_amount_str} {deviation_str} {fees_str} {fail_str}\n"
                             )
                     except Exception as e:
                         print(f"Failed to get RFQs for {maker}: {pair_str}")
