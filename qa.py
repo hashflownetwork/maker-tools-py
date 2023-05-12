@@ -2,7 +2,7 @@
 import argparse
 import asyncio
 import configparser
-from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_FLOOR, ROUND_UP, Decimal
 import json
 from random import random
 from hashflow.helpers.validation import validate_evm_address, validate_chain_id
@@ -154,16 +154,53 @@ async def handler(args, options):
                         # deviationBps = result['deviationBps']
                         # results = result['results']
                         # Here we put in the proper output code
-                        min_level = Decimal(entry["level"][0]["level"] if entry["level"].get(0)is not None else 0)
-                        max_level = Decimal(entry["level"][-1]["level"] if entry["level"].get(-1)is not None else 0)
+                        min_level = round_precision(Decimal(entry["levels"][0]["level"] if len(entry["levels"]) is not None else 0), 7)
+                        max_level = round_precision(Decimal(entry["levels"][-1]["level"] if len(entry["levels"]) is not None else 0), 7)
                         success_rate_percent = result["successRate"] * 100
-                        bias = result["bias_bps"]
-                        bias_sign = '+' if bias < 0 else ''
-                        deviation_bps = result['deviationBps']
+                        bias = round_precision(result["biasBps"], 4) if result.get("biasBps") else 0
+                        bias_sign = '+' if bias > 0 else ''
+                        deviation_bps = round_precision(result['deviationBps'], 4) if result.get('deviationBps') else 0
                         
                         sys.stdout.write('done\n')
-                        sys.stdout.write(f'\nSuccess rate: {success_rate_percent:.2f}% Avg bias {bias_sign}{bias:.4f} bps Std deviation: {deviation_bps:.4f} bps')
-                        sys.stdout.write(f"results for {maker}/{pair_str}: {result}\n")
+                        sys.stdout.write(f'\nSuccess rate: {success_rate_percent:.2f}% Avg bias {bias_sign}{bias} bps Std deviation: {deviation_bps} bps ')
+                        sys.stdout.write(f'Min level: {min_level} {entry["baseToken"]["name"]} Max level: {max_level} {entry["baseToken"]["name"]}')
+                        sys.stdout.write("\n[P] = Provided in RFQ   [M] = Received from Maker\n")
+
+                        max_base_amount_dp = max([get_dp(round_precision(r["baseAmount"], 7)) if r.get("baseAmount") else 0 for r in result["results"]])
+                        max_quote_amount_dp = max([get_dp(round_precision(r["quoteAmount"], 7)) if r.get("quoteAmount") else 0 for r in result["results"]])
+                        
+                        max_base_digits = max([len(f'{r["baseAmount"]:.7f}') if r.get("baseAmount") else 0 for r in result["results"]])
+                        max_quote_digits = max([len(f'{r["quoteAmount"]:.7f}')  if r.get("quoteAmount") else 0 for r in result["results"]])
+
+                        max_fees_digits = max([len(f'{r["feeBps"]}') if r.get("feeBps") else 0 for r in result["results"]])
+                        pad_dev_digits = max([len(str(round_precision(r["deviationBps"], 3))) + (1 if r["deviationBps"] > 0 else 0) if r.get("deviationBps") else 0 for r in result["results"]])
+                        max_expected_digits = max(max_base_digits, max_quote_digits)
+                        max_rfq_id_length = max([len(json.dumps(r["rfqIds"])) if r.get("rfqIds") else 0 for r in result["results"]])
+
+                        for r in result["results"]:
+                            if r.get("provided") == "base":
+                                base_letter = 'P'
+                                quote_letter = 'M'
+                                token_exp = entry["quoteToken"]["name"]
+                                max_expected_dp = max_quote_amount_dp
+                            else:
+                                base_letter = 'M'
+                                quote_letter = 'P'
+                                token_exp = entry["baseToken"]["name"]
+                                max_expected_dp = max_base_amount_dp
+
+                            base_amount_str = f'[{base_letter}] base: ' + f'{r["baseAmount"]:.{max_base_amount_dp}f}'.rjust(max_base_digits, ' ') + ' ' + entry["baseToken"]["name"]
+                            quote_amount_str = f'[{quote_letter}] quote: ' + f'{r["quoteAmount"]:.{max_quote_amount_dp}f}'.rjust(max_quote_digits, ' ') + ' ' + entry["quoteToken"]["name"]
+                            expected_amount_str = f'expected ' + f'{r["expectedAmount"]:.{max_expected_dp}}'.rjust(max_expected_digits, ' ') + ' ' + token_exp.ljust(max(len(entry["baseToken"]["name"]), len(entry["quoteToken"]["name"])), ' ')
+                            dev_sign = '+' if r.get("deviationBps", 0) > 0 else ''
+                            deviation = (dev_sign + str(round_precision(r['deviationBps'], 3))).rjust(pad_dev_digits, ' ') if r.get("deviationBps") else ''
+                            deviation_str = f'diff: {deviation} bps'
+                            fees = str(r["feeBps"]).rjust(max_fees_digits, ' ')
+                            fees_str = f'fees: {fees}'
+                            fail_str = f'failed! {r["failMsg"]}' if r.get("failMsg") else ''
+                            rfq_id_str = (json.dumps(r["rfqIds"]) if r.get("rfqIds") else "[--]").ljust(max_rfq_id_length, ' ')
+
+                            sys.stdout.write(f'[1] {rfq_id_str} {base_amount_str} {quote_amount_str} {expected_amount_str} {deviation_str} {fees_str} {fail_str}\n')
                     except Exception as e:
                         print(f"Failed to get RFQs for {maker}: {pair_str}")
                         raise e
@@ -172,6 +209,21 @@ async def handler(args, options):
             sys.stdout.write(f"failed! {e}\n")
             raise e
             sys.exit(-1)
+
+def round_precision(num, precision):
+    if (num == 0):
+        return num
+
+    left_of_decimal = int(abs(num).log10().quantize(Decimal("1."), rounding=ROUND_FLOOR) + 1)
+    right_of_decimal = precision - left_of_decimal
+    if right_of_decimal < 0:
+        multiplier = 10 ** -right_of_decimal
+        return (num / multiplier).quantize(Decimal("1.")) * multiplier
+    else:
+        return num.quantize(Decimal('1.'.ljust(2 + right_of_decimal, '0')))
+    
+def get_dp(num):
+    return max(str(num)[::-1].find('.'), 0)
 
 
 async def test_rfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
