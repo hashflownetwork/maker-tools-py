@@ -257,12 +257,15 @@ async def handler(args, options):
                                 + " "
                                 + entry["quoteToken"]["name"]
                             )
-                            token_max_length =  max(len(entry["baseToken"]["name"]),len(entry["quoteToken"]["name"]))
+                            token_max_length = max(
+                                len(entry["baseToken"]["name"]),
+                                len(entry["quoteToken"]["name"]),
+                            )
                             expected_amount_str = (
                                 f"expected: "
                                 + f'{r["expectedAmount"]:{max_expected_digits},.{max_expected_dp}f}'
                                 + " "
-                                + f'{token_exp:<{token_max_length}}'
+                                + f"{token_exp:<{token_max_length}}"
                             )
                             dev_sign = "+" if r.get("deviationBps", 0) > 0 else ""
                             rounded_deviation = (
@@ -270,7 +273,7 @@ async def handler(args, options):
                                 if r.get("deviationBps")
                                 else 0
                             )
-                            dev_str =f'{dev_sign}{rounded_deviation:.3f}'
+                            dev_str = f"{dev_sign}{rounded_deviation:.3f}"
                             deviation = (
                                 f"{dev_str:>{pad_dev_digits}}"
                                 if r.get("deviationBps") is not None
@@ -285,7 +288,7 @@ async def handler(args, options):
                             rfq_ids = (
                                 json.dumps(r["rfqIds"]) if r.get("rfqIds") else "[--]"
                             )
-                            rfq_id_str = f'{rfq_ids:{max_rfq_id_length}}'
+                            rfq_id_str = f"{rfq_ids:{max_rfq_id_length}}"
 
                             sys.stdout.write(
                                 f"[{index:2d}] {rfq_id_str} {base_amount_str} {quote_amount_str} {expected_amount_str} {deviation_str} {fees_str} {fail_str}\n"
