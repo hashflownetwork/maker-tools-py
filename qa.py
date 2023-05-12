@@ -165,129 +165,121 @@ async def handler(args, options):
             sys.exit(-1)
 
 
-async def testRfqs(api, wallet, numRequests, delayMs, maker, chainId, entry):
-    numSuccess = 0
-    sumBiasBps = 0
-    deviationEntries = []
+async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
     # Compute min and max levels
-    preLevels = entry["levels"]
+    pre_levels = entry["levels"]
 
-    if len(preLevels) == 1:
+    if len(pre_levels) == 1:
         raise ValueError(f"Levels for {maker} only have one entry: {entry}")
 
-    minLevel = Decimal(preLevels[0]["level"] or "0")
-    maxLevel = Decimal.max(
-        Decimal(preLevels[-1]["level"] or "0") * Decimal("0.95"), minLevel
+    min_level = Decimal(pre_levels[0]["level"] or "0")
+    max_level = Decimal.max(
+        Decimal(pre_levels[-1]["level"] or "0") * Decimal("0.95"), min_level
     )
 
-    async def sendRfq():
-        baseToken, quoteToken = entry["baseToken"], entry["quoteToken"]
+    async def send_rfq():
+        base_token, quote_token = entry["baseToken"], entry["quoteToken"]
         provided = "base" if random() < 0.5 else "quote"
-        baseAmount = Decimal(random()) * (maxLevel - minLevel) + minLevel
-        levelsQuote = compute_levels_quote(preLevels, baseAmount)
-        if levelsQuote.get("failure") or not levelsQuote["amount"]:
-            failMsg = f"Could not estimate pre-RFQ prices: {levelsQuote['failure']}. {json.dumps(preLevels)}"
+        base_amount = Decimal(random()) * (max_level - min_level) + min_level
+        levels_quote = compute_levels_quote(pre_levels, base_amount)
+        if levels_quote.get("failure") or not levels_quote["amount"]:
+            fail_msg = f"Could not estimate pre-RFQ prices: {levels_quote['failure']}. {json.dumps(pre_levels)}"
             return {
                 "provided": provided,
-                "baseAmount": baseAmount,
+                "baseAmount": base_amount,
                 "quoteAmount": None,
-                "failMsg": failMsg,
+                "failMsg": fail_msg,
             }
 
-        quoteAmount = levelsQuote["amount"]
-        baseTokenAmount, quoteTokenAmount = (
-            (convert_to_decimals(baseAmount, baseToken), None)
+        quote_amount = levels_quote["amount"]
+        base_token_amount, quote_token_amount = (
+            (convert_to_decimals(base_amount, base_token), None)
             if provided == "base"
-            else (None, convert_to_decimals(quoteAmount, quoteToken))
+            else (None, convert_to_decimals(quote_amount, quote_token))
         )
-        feeBps = round(random() * 10)
-        feeFactor = 1 - Decimal(feeBps) / 10000
+        fee_bps = round(random() * 10)
+        fee_factor = 1 - Decimal(fee_bps) / 10000
         try:
-            levelsMap, rfq = await asyncio.gather(
-                api.get_price_levels(chainId, [maker]),
+            levels_map, rfq = await asyncio.gather(
+                api.get_price_levels(chain_id, [maker]),
                 api.request_quote(
-                    chain_id=chainId,
-                    base_token=baseToken["address"],
-                    quote_token=quoteToken["address"],
-                    base_token_amount=str(baseTokenAmount) if baseTokenAmount else None,
-                    quote_token_amount=str(quoteTokenAmount) if quoteTokenAmount else None,
+                    chain_id=chain_id,
+                    base_token=base_token["address"],
+                    quote_token=quote_token["address"],
+                    base_token_amount=str(base_token_amount) if base_token_amount else None,
+                    quote_token_amount=str(quote_token_amount) if quote_token_amount else None,
                     wallet=wallet,
                     market_makers=[maker],
-                    feeBps=feeBps,
+                    feeBps=fee_bps,
                     debug=True,
                 ),
             )
             levels = next(
                 (
                     e["levels"]
-                    for e in levelsMap[maker]
-                    if e["pair"]["baseToken"] == baseToken["address"]
-                    and e["pair"]["quoteToken"] == quoteToken["address"]
+                    for e in levels_map[maker]
+                    if e["pair"]["baseToken"] == base_token["address"]
+                    and e["pair"]["quoteToken"] == quote_token["address"]
                 ),
                 None,
             )
             if not levels:
                 return {
                     "provided": provided,
-                    "baseAmount": baseAmount,
-                    "quoteAmount": quoteAmount,
-                    "feeBps": feeBps,
-                    "failMsg": f"No levels for {maker}. Received: {json.dumps(levelsMap)}",
+                    "baseAmount": base_amount,
+                    "quoteAmount": quote_amount,
+                    "feeBps": fee_bps,
+                    "failMsg": f"No levels for {maker}. Received: {json.dumps(levels_map)}",
                 }
-            expectedToken = quoteToken if provided == "base" else baseToken
-            expectedAmount = (
-                extract_expected_amount(levels, baseAmount, None) * feeFactor
+            expected_token = quote_token if provided == "base" else base_token
+            expected_amount = (
+                extract_expected_amount(levels, base_amount, None) * fee_factor
                 if provided == "base"
-                else extract_expected_amount(levels, None, quoteAmount) / feeFactor
+                else extract_expected_amount(levels, None, quote_amount) / fee_factor
             )
-            if not expectedAmount:
+            if not expected_amount:
                 return {
                     "provided": provided,
-                    "baseAmount": baseAmount if provided == "base" else None,
-                    "quoteAmount": quoteAmount if provided == "quote" else None,
+                    "baseAmount": base_amount if provided == "base" else None,
+                    "quoteAmount": quote_amount if provided == "quote" else None,
                     "failMsg": f"Could not estimate post-RFQ prices: {failure}. {json.dumps(levels)}",
                 }
-            expectedAmountDecimals = convert_to_decimals(expectedAmount, expectedToken)
+            expected_amount_decimals = convert_to_decimals(expected_amount, expected_token)
             if rfq.get("quoteData") is None:
                 return {
                     "provided": provided,
-                    "baseAmount": baseAmount,
-                    "quoteAmount": quoteAmount,
-                    "expectedAmount": expectedAmount,
-                    "feeBps": feeBps,
+                    "baseAmount": base_amount,
+                    "quoteAmount": quote_amount,
+                    "expectedAmount": expected_amount,
+                    "feeBps": fee_bps,
                     "rfqIds": rfq["internalRfqIds"] or [],
                     "failMsg": f"No quote data. Received error: {json.dumps(rfq['error'])}",
                 }
-            receivedAmountDecimals = Decimal(
+            received_amount_decimals = Decimal(
                 rfq["quoteData"]["quoteTokenAmount"]
                 if provided == "base"
                 else rfq["quoteData"]["baseTokenAmount"] or "0"
             )
-            receivedAmount = convert_from_decimals(
-                receivedAmountDecimals, expectedToken
+            received_amount = convert_from_decimals(
+                received_amount_decimals, expected_token
             )
-            deviationFactor = -1 if provided == "base" else 1
-            deviationBps = (
-                (receivedAmountDecimals - expectedAmountDecimals)
-                * deviationFactor
-                / expectedAmountDecimals
+            deviation_factor = -1 if provided == "base" else 1
+            deviation_bps = (
+                (received_amount_decimals - expected_amount_decimals)
+                * deviation_factor
+                / expected_amount_decimals
                 * 100
             )
-            if deviationBps.is_nan() or deviationBps.is_zero():
-                deviationBps = Decimal(0)
-
-            # Compute success stats
-            # numSuccess += 1
-            # sumBiasBps += deviationBps.to_number()
-            deviationEntries.append(deviationBps)
+            if deviation_bps.is_nan() or deviation_bps.is_zero():
+                deviation_bps = Decimal(0)
 
             return {
                 "provided": provided,
-                "baseAmount": baseAmount if provided == "base" else receivedAmount,
-                "quoteAmount": quoteAmount if provided == "quote" else receivedAmount,
-                "expectedAmount": expectedAmount,
-                "deviationBps": deviationBps,
-                "feeBps": feeBps,
+                "baseAmount": base_amount if provided == "base" else received_amount,
+                "quoteAmount": quote_amount if provided == "quote" else received_amount,
+                "expectedAmount": expected_amount,
+                "deviationBps": deviation_bps,
+                "feeBps": fee_bps,
                 "rfqIds": rfq.get("internalRfqIds", []),
             }
 
@@ -295,29 +287,29 @@ async def testRfqs(api, wallet, numRequests, delayMs, maker, chainId, entry):
             raise e
             return {"provided": provided, "failMsg": f"Error occurred: {e}"}
 
-    resultFutures = []
-    for i in range(0, numRequests):
-        if delayMs > 0:
-            await asyncio.sleep(delayMs / 1000)
-        resultFutures.append(sendRfq())
+    result_futures = []
+    for i in range(0, num_requests):
+        if delay_ms > 0:
+            await asyncio.sleep(delay_ms / 1000)
+        result_futures.append(send_rfq())
 
-    results = await asyncio.gather(*resultFutures)
+    results = await asyncio.gather(*result_futures)
 
     successes = [result for result in results if result.get("failMsg") is None]
-    numSuccess = len(successes)
-    if not numSuccess:
+    num_success = len(successes)
+    if not num_success:
         return {
             "successRate": 0,
             "results": results
         }
-    deviationEntries = [result["deviationBps"] for result in successes]
-    sumBiasBps = sum(deviationEntries)
-    bias_bps = sumBiasBps / numSuccess
-    sum_squared_deviation = sum([(d - Decimal(bias_bps)) ** 2 for d in deviationEntries])
-    deviation_bps = (sum_squared_deviation**numSuccess).sqrt()
+    deviation_entries = [result["deviationBps"] for result in successes]
+    sum_bias_bps = sum(deviation_entries)
+    bias_bps = sum_bias_bps / num_success
+    sum_squared_deviation = sum([(d - Decimal(bias_bps)) ** 2 for d in deviation_entries])
+    deviation_bps = (sum_squared_deviation**num_success).sqrt()
 
     return {
-        "successRate": numSuccess / numRequests,
+        "successRate": num_success / num_requests,
         "biasBps": bias_bps,
         "deviationBps": deviation_bps,
         "results": results,
