@@ -154,6 +154,15 @@ async def handler(args, options):
                         # deviationBps = result['deviationBps']
                         # results = result['results']
                         # Here we put in the proper output code
+                        min_level = Decimal(entry["level"][0]["level"] if entry["level"].get(0)is not None else 0)
+                        max_level = Decimal(entry["level"][-1]["level"] if entry["level"].get(-1)is not None else 0)
+                        success_rate_percent = result["successRate"] * 100
+                        bias = result["bias_bps"]
+                        bias_sign = '+' if bias < 0 else ''
+                        deviation_bps = result['deviationBps']
+                        
+                        sys.stdout.write('done\n')
+                        sys.stdout.write(f'\nSuccess rate: {success_rate_percent:.2f}% Avg bias {bias_sign}{bias:.4f} bps Std deviation: {deviation_bps:.4f} bps')
                         sys.stdout.write(f"results for {maker}/{pair_str}: {result}\n")
                     except Exception as e:
                         print(f"Failed to get RFQs for {maker}: {pair_str}")
@@ -316,7 +325,7 @@ async def test_rfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry)
         "successRate": num_success / num_requests,
         "biasBps": bias_bps,
         "deviationBps": deviation_bps,
-        # "results": results,
+        "results": results,
     }
 
 
