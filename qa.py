@@ -137,7 +137,7 @@ async def handler(args, options):
                     base_name = entry["baseToken"]["name"]
                     quote_name = entry["quoteToken"]["name"]
                     pair_str = f"{base_name}-{quote_name}"
-                    sys.stdout.write(f"Requesting RFQs for {maker}: {pair_str} ... ")
+                    sys.stdout.write(f"\nRequesting RFQs for {maker}: {pair_str} ... ")
 
                     try:
                         result = await test_rfqs(
