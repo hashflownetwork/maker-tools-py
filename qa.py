@@ -183,7 +183,7 @@ async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
         base_amount = Decimal(random()) * (max_level - min_level) + min_level
         levels_quote = compute_levels_quote(pre_levels, base_amount)
         if levels_quote.get("failure") or not levels_quote["amount"]:
-            fail_msg = f"Could not estimate pre-RFQ prices: {levels_quote['failure']}. {json.dumps(pre_levels)}"
+            fail_msg = f"Could not estimate pre-RFQ prices: {levels_quote.get('failure')}. {json.dumps(pre_levels)}"
             return {
                 "provided": provided,
                 "baseAmount": base_amount,
@@ -206,8 +206,12 @@ async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
                     chain_id=chain_id,
                     base_token=base_token["address"],
                     quote_token=quote_token["address"],
-                    base_token_amount=str(base_token_amount) if base_token_amount else None,
-                    quote_token_amount=str(quote_token_amount) if quote_token_amount else None,
+                    base_token_amount=str(base_token_amount)
+                    if base_token_amount
+                    else None,
+                    quote_token_amount=str(quote_token_amount)
+                    if quote_token_amount
+                    else None,
                     wallet=wallet,
                     market_makers=[maker],
                     feeBps=fee_bps,
@@ -242,9 +246,11 @@ async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
                     "provided": provided,
                     "baseAmount": base_amount if provided == "base" else None,
                     "quoteAmount": quote_amount if provided == "quote" else None,
-                    "failMsg": f"Could not estimate post-RFQ prices: {failure}. {json.dumps(levels)}",
+                    "failMsg": f"Could not estimate post-RFQ prices. {json.dumps(levels)}",
                 }
-            expected_amount_decimals = convert_to_decimals(expected_amount, expected_token)
+            expected_amount_decimals = convert_to_decimals(
+                expected_amount, expected_token
+            )
             if rfq.get("quoteData") is None:
                 return {
                     "provided": provided,
@@ -298,14 +304,13 @@ async def testRfqs(api, wallet, num_requests, delay_ms, maker, chain_id, entry):
     successes = [result for result in results if result.get("failMsg") is None]
     num_success = len(successes)
     if not num_success:
-        return {
-            "successRate": 0,
-            "results": results
-        }
+        return {"successRate": 0, "results": results}
     deviation_entries = [result["deviationBps"] for result in successes]
     sum_bias_bps = sum(deviation_entries)
     bias_bps = sum_bias_bps / num_success
-    sum_squared_deviation = sum([(d - Decimal(bias_bps)) ** 2 for d in deviation_entries])
+    sum_squared_deviation = sum(
+        [(d - Decimal(bias_bps)) ** 2 for d in deviation_entries]
+    )
     deviation_bps = (sum_squared_deviation**num_success).sqrt()
 
     return {
@@ -358,16 +363,16 @@ def to_price_levels_decimal(price_levels, options=None):
     return [
         {
             "level": Decimal(l["level"]),
-            "price": 1 / Decimal(l["price"])
-            if invert
-            else Decimal(l["price"]),
+            "price": 1 / Decimal(l["price"]) if invert else Decimal(l["price"]),
         }
         for l in price_levels
     ]
 
 
 def convert_to_decimals(amount, token):
-    return (amount * (Decimal(10) ** token["decimals"])).quantize(Decimal('1.'), rounding=ROUND_DOWN)
+    return (amount * (Decimal(10) ** token["decimals"])).quantize(
+        Decimal("1."), rounding=ROUND_DOWN
+    )
 
 
 def convert_from_decimals(amount, token):
