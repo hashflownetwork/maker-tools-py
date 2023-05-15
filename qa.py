@@ -167,7 +167,7 @@ async def handler(args, options):
 
                         sys.stdout.write("done\n")
                         sys.stdout.write(
-                            f"\nSuccess rate: {success_rate_percent:.2f}% Avg bias {bias_sign}{bias} bps Std deviation: {deviation_bps} bps "
+                            f"\nSuccess rate: {success_rate_percent:.2f}% Avg bias {bias_sign}{bias:.2f} bps Std deviation: {deviation_bps:.2f} bps "
                         )
                         sys.stdout.write(
                             f'Min level: {min_level} {entry["baseToken"]["name"]} Max level: {max_level} {entry["baseToken"]["name"]}'
