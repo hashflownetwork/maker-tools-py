@@ -234,6 +234,9 @@ async def handler(args, options):
                         )
 
                         for index, r in enumerate(result["results"]):
+                            if r.get("failMsg"):
+                                sys.stdout.write(f"{r['failMsg']}\n")
+                                continue
                             if r.get("provided") == "base":
                                 base_letter = "P"
                                 quote_letter = "M"
